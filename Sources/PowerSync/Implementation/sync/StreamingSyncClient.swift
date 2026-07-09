@@ -77,6 +77,10 @@ The next upload iteration will be delayed.
                 } else {
                     // Uploading is completed
                     try await self.uploadLocalTarget()
+                    db.syncStatus.maybeMutateStatus(
+                        shouldUpdate: { $0.internalUploadError != nil },
+                        apply: { $0.internalUploadError = nil }
+                    )
                     break
                 }
             } catch {

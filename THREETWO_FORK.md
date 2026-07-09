@@ -12,6 +12,12 @@ events and local writes stall in `ps_crud` until process restart.
 Also: `PowerSyncTransactionObserver` observes trigger/C-API side-effects so
 `ps_crud` appears in update sets.
 
+Backported from upstream `d597dc75` ("fix: clear upload errors", #156, first
+released in 1.15.0): clear `SyncStatus.uploadError` once the upload queue is
+fully drained. On 1.14.4 the upload error latched for the whole connection, so
+Bear Days' family sync badge stayed on "Sync error" after sync had recovered,
+until the app was relaunched. Drop this backport when rebasing onto >= 1.15.0.
+
 ## Maintaining
 
 ```bash
