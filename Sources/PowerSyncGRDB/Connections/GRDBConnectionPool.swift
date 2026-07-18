@@ -20,9 +20,11 @@ import SQLite3
 actor GRDBConnectionPool: SQLiteConnectionPoolProtocol {
     let pool: DatabasePool
 
-    private let tableUpdatesStream = BroadcastStream<Set<String>>()
+    // nonisolated: protocol getter must be callable off the actor; BroadcastStream is a
+    // thread-safe multicast (same pattern as AsyncConnectionPool).
+    nonisolated private let tableUpdatesStream = BroadcastStream<Set<String>>()
 
-    var tableUpdates: AsyncStream<Set<String>> {
+    nonisolated var tableUpdates: AsyncStream<Set<String>> {
         tableUpdatesStream.subscribe()
     }
 

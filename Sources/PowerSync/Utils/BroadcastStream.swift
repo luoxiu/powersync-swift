@@ -6,6 +6,8 @@
 /// Bear Days / threetwo fork note: without multicast, AttachmentQueue `watch`
 /// steals uni-cast AsyncStream events from the CRUD upload loop.
 package final class BroadcastStream<T: Sendable>: Sendable {
+    package init() {}
+
     private let listeners: Mutex<Set<BroadcastStreamListener<T>>> = Mutex([])
 
     private func register(continuation: AsyncStream<T>.Continuation) {
