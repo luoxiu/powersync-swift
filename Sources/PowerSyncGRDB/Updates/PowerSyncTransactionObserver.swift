@@ -18,6 +18,17 @@ final class PowerSyncTransactionObserver: TransactionObserver {
         self.onChange = onChange
     }
 
+    /// Match ``AllWritesObserver``: include SQLite C-API / trigger side-effects
+    /// (e.g. PowerSync writing `ps_crud` when a synced view is mutated via GRDB).
+    ///
+    /// Bear Days / threetwo fork: ensures GRDB mutations surface `ps_crud` in
+    /// table-update sets so the upload loop can wake.
+    var databaseEventObservationStrategy: DatabaseEventObservationStrategy {
+        var strategy = DatabaseEventObservationStrategy.default
+        strategy.requiresDatabaseEventKind = false
+        return strategy
+    }
+
     func observes(eventsOfKind _: DatabaseEventKind) -> Bool {
         // We want all the events for the PowerSync SDK
         return true
