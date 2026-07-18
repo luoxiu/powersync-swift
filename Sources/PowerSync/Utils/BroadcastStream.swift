@@ -1,5 +1,11 @@
 /// Dispatches events to a number of listeners as an ``AsyncStream``.
-final class BroadcastStream<T: Sendable>: Sendable {
+///
+/// `package` so PowerSyncGRDB can multicast `tableUpdates` the same way the
+/// non-GRDB pool does — a plain `AsyncStream` is single-consumer.
+///
+/// Bear Days / threetwo fork note: without multicast, AttachmentQueue `watch`
+/// steals uni-cast AsyncStream events from the CRUD upload loop.
+package final class BroadcastStream<T: Sendable>: Sendable {
     private let listeners: Mutex<Set<BroadcastStreamListener<T>>> = Mutex([])
 
     private func register(continuation: AsyncStream<T>.Continuation) {
@@ -13,14 +19,14 @@ final class BroadcastStream<T: Sendable>: Sendable {
         }
     }
 
-    func dispatch(event: T) {
+    package func dispatch(event: T) {
         let listeners = self.listeners.withLock { Array($0) }
         for listener in listeners {
             listener.continuation.yield(event)
         }
     }
 
-    func subscribe(
+    package func subscribe(
         bufferingPolicy: AsyncStream<T>.Continuation.BufferingPolicy = .unbounded,
         addInitial: T? = nil
     ) -> AsyncStream<T> {

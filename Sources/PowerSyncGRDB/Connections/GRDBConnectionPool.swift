@@ -12,29 +12,31 @@ import SQLite3
 /// - Provides async streams of table updates for replication.
 /// - Bridges GRDB's managed connections to PowerSync's lease abstraction.
 /// - Allows both read and write access to raw SQLite connections.
+///
+/// Bear Days / threetwo fork: table updates are multicast via ``BroadcastStream``.
+/// Upload loop and `watch()` (AttachmentQueue, etc.) both subscribe; upstream
+/// 1.14.3's uni-cast `AsyncStream` lets the second subscriber steal events so
+/// CRUD uploads stop waking after the attachment watcher starts.
 actor GRDBConnectionPool: SQLiteConnectionPoolProtocol {
     let pool: DatabasePool
 
-    let tableUpdates: AsyncStream<Set<String>>
-    private var tableUpdatesContinuation: AsyncStream<Set<String>>.Continuation?
+    private let tableUpdatesStream = BroadcastStream<Set<String>>()
+
+    var tableUpdates: AsyncStream<Set<String>> {
+        tableUpdatesStream.subscribe()
+    }
 
     init(
         pool: DatabasePool
     ) {
         self.pool = pool
-        // Cannot capture Self before initializing all properties
-        var tempContinuation: AsyncStream<Set<String>>.Continuation?
-        tableUpdates = AsyncStream { continuation in
-            tempContinuation = continuation
-            pool.add(
-                transactionObserver: PowerSyncTransactionObserver { updates in
-                    // push the update
-                    continuation.yield(updates)
-                },
-                extent: .databaseLifetime
-            )
-        }
-        tableUpdatesContinuation = tempContinuation
+        let stream = tableUpdatesStream
+        pool.add(
+            transactionObserver: PowerSyncTransactionObserver { updates in
+                stream.dispatch(event: updates)
+            },
+            extent: .databaseLifetime
+        )
     }
 
     func read<T: Sendable>(
@@ -55,13 +57,13 @@ actor GRDBConnectionPool: SQLiteConnectionPoolProtocol {
             let observer = AllWritesObserver()
             database.add(transactionObserver: observer)
             defer { database.remove(transactionObserver: observer) }
-            
+
             let result = try onConnection(GRDBConnectionLease(database: database))
             return (result, observer.committedTables)
         }
 
         if !updates.isEmpty {
-            tableUpdatesContinuation?.yield(updates)
+            tableUpdatesStream.dispatch(event: updates)
 
             // Notify GRDB, this needs to be a write (transaction)
             try await pool.write { database in
