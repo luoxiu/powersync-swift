@@ -15,7 +15,7 @@ import SQLite3
 ///
 /// Bear Days / threetwo fork: table updates are multicast via ``BroadcastStream``.
 /// Upload loop and `watch()` (AttachmentQueue, etc.) both subscribe; upstream
-/// 1.14.3's uni-cast `AsyncStream` lets the second subscriber steal events so
+/// 1.14.4's uni-cast `AsyncStream` lets the second subscriber steal events so
 /// CRUD uploads stop waking after the attachment watcher starts.
 actor GRDBConnectionPool: SQLiteConnectionPoolProtocol {
     let pool: DatabasePool
